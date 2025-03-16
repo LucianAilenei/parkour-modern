@@ -1,4 +1,4 @@
-name: SonarCloud Analysis
+name: SonarCloud Analysis with JaCoCo
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Necesar pentru SonarQube
+          fetch-depth: 0  # Necesar pentru SonarCloud
 
       - name: Setup JDK 17
         uses: actions/setup-java@v3
@@ -39,16 +39,27 @@ jobs:
           key: ${{ runner.os }}-maven
           restore-keys: ${{ runner.os }}-maven
 
-      - name: Build and analyze with SonarCloud
+      - name: Build, run tests, and analyze with SonarCloud
         run: |
           mvn clean verify sonar:sonar \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
             -Dsonar.organization=${{ secrets.SONAR_ORG }} \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
       - name: SonarCloud Quality Gate Check
         uses: sonarsource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Fail the build if Quality Gate fails
+        run: |
+          STATUS=$(curl -s "https://sonarcloud.io/api/qualitygates/project_status?projectKey=${{ secrets.SONAR_PROJECT_KEY }}" | jq -r .projectStatus.status)
+          if [[ "$STATUS" == "ERROR" ]]; then
+            echo "❌ SonarCloud Quality Gate FAILED!"
+            exit 1
+          else
+            echo "✅ SonarCloud Quality Gate PASSED!"
+          fi
