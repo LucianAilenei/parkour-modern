@@ -1,5 +1,10 @@
 package com.parkour.game;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public abstract class Entity implements GameObject {
     // Pozițiile se stochează ca double pentru precizie.
     protected double x, y;
